@@ -20,9 +20,10 @@ import math
 TIME_STEP          = 64                # ms – Webots default for e‑puck
 MAX_WHEEL_SPEED    = 3.14              # rad/s (half of 6.28 for stability)
 CIRCLE_RADIUS      = 0.35              # metres – <‑‑ change at will
-IR_RANGE           = 0.25              # metres – must match Emitter.range
-LEVEL_TARGET       = round(CIRCLE_RADIUS / IR_RANGE)
+IR_RANGE           = 0.18              # metres – must match Emitter.range (updated)
+LEVEL_TARGET       = math.ceil(CIRCLE_RADIUS / IR_RANGE)  # recomputed automatically
 STUCK_SPIN_SPEED   = 0.5               # rad/s – slow search when no packets
+SEARCH_FORWARD_SPEED = 0.4             # rad/s – small forward motion while searching
 PROX_THRESHOLD     = 80.0              # proximity raw value to start repulsion
 
 # ---------- robot & devices ---------- #
@@ -102,7 +103,7 @@ while robot.step(TIME_STEP) != -1:
 
     # 4a. If no packets were heard, spin slowly to search for neighbours
     if bearing_to_min is None:
-        drive(0.0, STUCK_SPIN_SPEED)
+        drive(SEARCH_FORWARD_SPEED, STUCK_SPIN_SPEED)   # move forward while spinning to encounter peers
         continue
 
     # 4b. Determine desired direction (sign of level_error)
@@ -113,13 +114,19 @@ while robot.step(TIME_STEP) != -1:
     # Simple P‑controller on heading
     HEADING_KP = 2.0
     turn = HEADING_KP * desired_bearing
-    drive_speed = 0.5                    # forward base speed (rad/s wheel equiv)
+    drive_speed = 0.3                  # forward base speed (rad/s wheel equiv)
     drive(drive_speed, turn)
 
-    # 4c. Repulsion for spacing when already on the ring
+    # 4c. Behaviour when already on the ring  (level == target)
     if level_error == 0:
-        # If front proximity too high, back off a little
-        front_left  = ps[0].getValue()
-        front_right = ps[7].getValue()
-        if max(front_left, front_right) > PROX_THRESHOLD:
-            drive(-0.5, 0.0)             # short reverse
+        # stop radial motion; only spread tangentially if neighbours are too close
+        drive(0.0, 0.0)
+
+        # simple tangential shuffle every few steps so they spread uniformly
+        if robot.getTime() % 5.0 < (TIME_STEP/1000.0):
+            drive(0.3, 0.0)            # short forward burst
+
+        # Extra repulsion to avoid clustering
+        if max(ps[0].getValue(), ps[7].getValue()) > PROX_THRESHOLD:
+            drive(-0.4, 0.0)           # step back if too close
+        continue
