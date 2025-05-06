@@ -5,13 +5,16 @@ by wb_receiver_get_emitter_direction(), and steers toward that
 average (centroid) using differential drive.
 """
 
-from controller import Robot
+from controller import Robot, Supervisor
 import numpy as np
 import math
 import random
 
 # ---- robot & devices --------------------------------------------------------
-robot       = Robot()
+robot       = Supervisor()
+robot_name  = robot.getName()
+robot_node  = robot.getFromDef(robot_name)
+translation_field = robot_node.getField("translation")
 TIME_STEP   = int(robot.getBasicTimeStep())
 
 MAX_WHEEL_VEL = 6.28        # half of e-puck max for stability
@@ -52,6 +55,14 @@ def diff_drive(theta, base_speed=MAX_WHEEL_VEL):
     v_l = max(-MAX_WHEEL_VEL, min(MAX_WHEEL_VEL, v_l))
     v_r = max(-MAX_WHEEL_VEL, min(MAX_WHEEL_VEL, v_r))
     return v_l, v_r
+
+# ---- set initial position --------------------------------------------------
+def get_random_position_in_arena():
+    x = random.uniform(-0.5, 0.5)
+    y = random.uniform(-0.5, 0.5)
+    return [x, y, 0.0]
+
+translation_field.setSFVec3f(get_random_position_in_arena())
 
 # ---- main loop ------------------------------------------------------------
 while robot.step(TIME_STEP) != -1:
