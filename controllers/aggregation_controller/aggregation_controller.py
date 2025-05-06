@@ -15,8 +15,8 @@ robot       = Supervisor()
 robot_name  = robot.getName()
 robot_node  = robot.getFromDef(robot_name)
 translation_field = robot_node.getField("translation")
-TIME_STEP   = int(robot.getBasicTimeStep())
 
+TIME_STEP   = int(robot.getBasicTimeStep())
 MAX_WHEEL_VEL = 6.28        # half of e-puck max for stability
 
 left_motor  = robot.getDevice("left wheel motor")
@@ -62,7 +62,20 @@ def get_random_position_in_arena():
     y = random.uniform(-0.5, 0.5)
     return [x, y, 0.0]
 
+def set_emitter_visualization_transparency(robot_node, transparency):
+    children_field = robot_node.getField("children")
+    emitter_node = children_field.getMFNode(44)
+    emitter_children_field = emitter_node.getField("children")
+    emitter_pose_node = emitter_children_field.getMFNode(0)
+    emitter_pose_children_field = emitter_pose_node.getField("children")
+    emitter_pose_children_shape_node = emitter_pose_children_field.getMFNode(0)
+    emitter_pose_children_shape_appearance_sfnode = emitter_pose_children_shape_node.getField("appearance").getSFNode()
+    
+    transparency_field = emitter_pose_children_shape_appearance_sfnode.getField("transparency")
+    transparency_field.setSFFloat(transparency)
+
 translation_field.setSFVec3f(get_random_position_in_arena())
+set_emitter_visualization_transparency(robot_node, 1.0)
 
 # ---- main loop ------------------------------------------------------------
 while robot.step(TIME_STEP) != -1:
